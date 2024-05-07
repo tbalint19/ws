@@ -1,0 +1,48 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1715012220705,
+      "tag": "0000_powerful_moira_mactaggert",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1715014135186,
+      "tag": "0001_massive_jean_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1715016086776,
+      "tag": "0002_whole_molecule_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1715017030612,
+      "tag": "0003_blue_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1715019167770,
+      "tag": "0004_melodic_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1715024571153,
+      "tag": "0005_reflective_exiles",
+      "breakpoints": true
+    }
+  ]
+}

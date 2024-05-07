@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "1.0.50",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts",
+    "gen": "bunx drizzle-kit generate:pg",
+    "sql": "bun src/database/migrate.ts"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.0.2",
+    "@neondatabase/serverless": "^0.9.0",
+    "@sinclair/typebox": "^0.32.19",
+    "@types/ws": "^8.5.10",
+    "drizzle-orm": "^0.30.4",
+    "drizzle-typebox": "^0.1.1",
+    "elysia": "1.0.12",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "bun-types": "latest",
+    "drizzle-kit": "^0.20.14"
+  },
+  "module": "src/index.js"
+}
