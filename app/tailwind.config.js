@@ -2,7 +2,11 @@
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   theme: {
-    extend: {},
+    extend: {
+      gridTemplateColumns: {
+        '3cols': 'repeat(3, 1fr)',
+      }
+    }
   },
   plugins: [require("daisyui")],
   daisyui: {

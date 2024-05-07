@@ -1,1 +1,0 @@
-ALTER TABLE "admin" RENAME COLUMN "email" TO "username";

@@ -4,13 +4,12 @@ import { serverClient } from '../../api/serverClient.js'
 export const GET = async (request) => {
 
   const code = request.url.searchParams.get("code")
-  
+
   if (!code)
     throw redirect(308, "/")
 
   const response = await serverClient["social-login"].post({ code })
     .catch((err) => console.log(err))
-  
   if (!response?.data)
     throw redirect(308, "/")
 

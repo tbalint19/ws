@@ -150,6 +150,7 @@ export const multiProviderAuth = <const SessionUserSchema extends TAnySchema>(
         throw new AuthenticationError()
 
       const sessionData = await login(idTokenPayload, providerName)
+      
       if (!sessionData)
         throw new AuthorizationError()
 
