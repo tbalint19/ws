@@ -9,6 +9,8 @@ export const admin = pgTable("admin", {
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
+// category, tag
+
 export const product = pgTable("product", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name"),
@@ -18,7 +20,7 @@ export const product = pgTable("product", {
 
   versionOf: uuid("version_of").references((): AnyPgColumn => product.id),
 
-  availableAmount: doublePrecision("available_amount").default(0),
+  availableAmount: doublePrecision("available_amount").default(0),      // location
   displayUnit: text("display_unit"),  // darab, pár, szál
 
   grossWeightOfUnitInKg: doublePrecision("gross_weight_of_unit_in_kg"),
