@@ -36,6 +36,20 @@
       "when": 1715110647344,
       "tag": "0004_fair_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1715611190649,
+      "tag": "0005_condemned_microchip",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1715611438646,
+      "tag": "0006_cool_masked_marvel",
+      "breakpoints": true
     }
   ]
 }

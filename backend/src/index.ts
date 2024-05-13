@@ -2,10 +2,21 @@ import { Elysia, t } from "elysia";
 import { cors } from '@elysiajs/cors'
 import { authPlugin } from "./plugin/auth";
 import { products } from "./routes/admin/products";
-import { upload } from "./routes/admin/upload";
+import { upload } from "./routes/admin/s3";
+
+const dev = async () => {
+  const sleep = () => new Promise<void>((res, rej) => setTimeout(() => res(), 2000))
+  await sleep()
+  if (Math.random() > 0.5)
+    throw new Error()
+}
 
 const api = new Elysia()
   .use(cors())
+  .derive(async ctx => {
+    // await dev()
+    return ctx
+  })
   .use(authPlugin)
   .use(products)
   .use(upload)

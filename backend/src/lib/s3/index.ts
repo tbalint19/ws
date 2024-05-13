@@ -1,6 +1,6 @@
 import { t } from 'elysia'
 import { safeParse } from '../safeParse'
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const ConfigSchema = t.Object({
@@ -35,7 +35,7 @@ const s3Client = new S3Client({
   }
 })
 
-export const getPresignedUrl = async (path: string, filename: string, type: string) => {
+export const getUrlForUpload = async (path: string, filename: string, type: string) => {
   const command = new PutObjectCommand({
     Bucket: S3_BUCKET,
     Key: `${S3_FOLDER}${path}${filename}`,
@@ -43,6 +43,19 @@ export const getPresignedUrl = async (path: string, filename: string, type: stri
     Metadata: {
       'x-amz-acl': 'public-read'
     }
+  })
+  try {
+    const url = await getSignedUrl(s3Client, command)
+    return url
+  } catch (error) {
+    return null
+  }
+};
+
+export const getUrlForDelete = async (path: string, filename: string) => {
+  const command = new DeleteObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: `${S3_FOLDER}${path}${filename}`,
   })
   try {
     const url = await getSignedUrl(s3Client, command)

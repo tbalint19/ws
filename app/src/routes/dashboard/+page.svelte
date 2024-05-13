@@ -79,17 +79,7 @@
     })
   }
 
-  export let data
-
   const user = getContext<Readable<User>>("user")
-
-  let uploadOpen = false
-
-  const getPresignedUrl = async (file: File): Promise<string | null> => {
-    const response = await http.api.upload.images.post({ filename: file.name, type: file.type }).catch(() => {})
-    if (!response || !response.data) return null
-    return response.data.url
-  }
 </script>
 
 <svelte:head>
@@ -102,14 +92,7 @@
   <div>
     <button class="btn btn-info" on:click={() => createOpen = true}>Create product</button>
     <button class="mt-4 btn btn-info" on:click={loadProducts}>Refresh</button>
-    <button class="mt-4 btn btn-info" on:click={() => uploadOpen = true}>Upload</button>
   </div>
-  
-  {#if uploadOpen}
-  <Modal on:clickOut={() => uploadOpen = false}>
-    <FileUpload on:close={() => uploadOpen = false} {getPresignedUrl} />
-  </Modal>
-  {/if}
 
   <div class="divider">Products</div>
 

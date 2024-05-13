@@ -38,11 +38,19 @@ export const product = pgTable("product", {
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
+export const file = pgTable("file", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  url: text("url"),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
+
 export const productImage = pgTable("product_image", {
   id: uuid("id").primaryKey().defaultRandom(),
-  url: text("url").notNull(),
-  alt: text("alt"),
+
   productId: uuid("product_id").references(() => product.id).notNull(),
+  fileId: uuid("file_id").references(() => file.id).notNull(),
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
