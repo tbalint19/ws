@@ -128,15 +128,15 @@ export const multiProviderAuth = <const SessionUserSchema extends TAnySchema>(
     .derive({ as: 'global' }, async (ctx) => {
       const authHeader = ctx.headers[config.session.authHeader]
       if (!authHeader)
-        return { ...ctx, user: null }
+        return { user: null }
       const token = authHeader.split(config.session.tokenPrefix)[1]
       const user = await verifySession(token)
       if (!user) {
         log("error", safeStringify("Could not verify user"))
-        return { ...ctx, user: null }
+        return { user: null }
       }
       log("info", `[${ctx.request.method}] ${ctx.path} - ${JSON.stringify(user)}`)
-      return { ...ctx, user }
+      return { user }
     })
     .post("/social-login", async ({ body }) => {
       const providerName = body.provider || "default"

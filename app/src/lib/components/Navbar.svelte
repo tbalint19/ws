@@ -23,7 +23,7 @@
 
 </script>
 
-<nav class="navbar bg-base-100">
+<nav class="navbar bg-base-300">
   <div class="navbar-start">
     <div class="dropdown">
       <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">

@@ -3,24 +3,22 @@
   import { type AppClient } from "../api/appClient";
   import { type NotificationCTX } from "$lib/components/RequestNotifications/context";
   import { createEventDispatcher } from "svelte";
-  import axios from "axios";
 	import Modal from "$lib/components/Modal.svelte";
 
-  type Metadata = NonNullable<Awaited<ReturnType<typeof http.api.s3.images.get>>['data']>[0]
+  type Metadata = NonNullable<Awaited<ReturnType<typeof http.api.files.get>>['data']>[0]
 
   const http = getContext<AppClient>('client')
   const notifications = getContext<NotificationCTX>('notifications')
 
   const dispatchUpdate = createEventDispatcher<{ update: Metadata }>()
   const dispatchDelete = createEventDispatcher<{ delete: { id: string }}>()
-
   
   export let metadata: Metadata
 
   let isUpdating = false
   const update = async () => {
     isUpdating = true
-    const response = await http.api.s3.images.patch({ name, id: metadata.id }).catch(notifications.warn)
+    const response = await http.api.files({ id: metadata.id }).patch({ name }).catch(notifications.warn)
     isUpdating = false
     if (!response || !response.data)
       return
@@ -32,25 +30,12 @@
   let isDeleting = false
   const deleteImage = async () => {
     isDeleting = true
-    const urlResponse = await http.api.s3.delete.delete({ id: metadata.id }).catch(notifications.warn)
-    if (!urlResponse)
-      return
-
-    const url = urlResponse.data?.url
-    if (!url)
-      return notifications.warn()
-    
-    console.log(url)
-    const deleteResponse = await axios.delete(url).catch(err => console.log(err))
-    if (!deleteResponse || deleteResponse.status > 299)
-      return notifications.warn()
-
-    const metadataResponse = await http.api.s3["delete-metadata"].delete({ id: metadata.id }).catch(notifications.warn)
-    if (!metadataResponse)
-      return
-
+    const response = await http.api.files({ id: metadata.id }).delete().catch(notifications.warn)
     isDeleting = false
-    dispatchDelete('delete', { id: metadata.id })
+    if (!response || !response.data)
+      return
+    
+    dispatchDelete('delete', response.data)
     deleteOpen = false
   }
   

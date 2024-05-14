@@ -9,7 +9,7 @@
   const http = getContext<AppClient>('client')
   const notifications = getContext<NotificationCTX>('notifications')
 
-  type Metadata = NonNullable<Awaited<ReturnType<typeof http.api.s3.images.get>>['data']>[0]
+  type Metadata = NonNullable<Awaited<ReturnType<typeof http.api.files.get>>['data']>[0]
   let files: Metadata[] = []
 
   const deleteFile = (id: string) => {
@@ -25,7 +25,7 @@
   let uploadOpen = false
 
   const getFiles = async () => {
-    const response = await http.api.s3.images.get({ query: { name, limit } }).catch(notifications.warn)
+    const response = await http.api.files.get({ query: { name, limit } }).catch(notifications.warn)
     if (!response || !response.data)
       return
 
@@ -33,9 +33,11 @@
   } 
   
   const getPresignedUrl = async (file: File) => {
-    const response = await http.api.s3.images.post({ filename: file.name, type: file.type }).catch(() => {})
+    const response = await http.api.files.post({
+      filename: file.name, type: file.type, folder: "images"
+    }).catch(notifications.warn)
     if (!response || !response.data) return null
-    return { url: response.data.url, id: response.data.metadata?.id || null }
+    return { url: response.data.url, id: response.data.metadata.id }
   }
 </script>
 

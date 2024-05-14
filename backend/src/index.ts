@@ -14,7 +14,7 @@ const dev = async () => {
 const api = new Elysia()
   .use(cors())
   .derive(async ctx => {
-    // await dev()
+    //await dev()
     return ctx
   })
   .use(authPlugin)

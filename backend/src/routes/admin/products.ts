@@ -1,4 +1,4 @@
-import { Elysia, t } from "elysia";
+import { Elysia, NotFoundError, t } from "elysia";
 import { authPlugin } from "../../plugin/auth";
 import { database } from "../../database/setup";
 import { product, productProperties, topup } from "../../database/schema";
@@ -6,13 +6,7 @@ import { createInsertSchema } from "drizzle-typebox";
 import { AuthenticationError } from "../../lib/authPlugin";
 import { eq, sql } from "drizzle-orm";
  
-const newProductSchema = createInsertSchema(product, {
-  id: t.Undefined(),
-})
-
-const newTopupSchema = createInsertSchema(topup, {
-  id: t.Undefined(),
-})
+const NewProductSchema = createInsertSchema(product)
 
 export const products = new Elysia()
   .use(authPlugin)
@@ -32,25 +26,19 @@ export const products = new Elysia()
 
     return result
   }, {
-    body: newProductSchema
+    body: t.Omit(NewProductSchema, [ 'id', 'createdAt', 'updatedAt' ])
   })
-  .post("/api/topup", async (ctx) => {
+  .patch("/api/products", async (ctx) => {
     if (!ctx.user)
       throw new AuthenticationError()
 
-    await database.transaction(async (tx) => {
-      await tx
-        .update(product)
-        .set({ availableAmount: sql`${product.availableAmount} + ${ctx.body.amount}` })
-        .where(eq(product.id, ctx.body.id)).returning()
-      await tx.insert(topup).values(ctx.body.topup).returning()
-    });
+    if (!ctx.body.id)
+      throw new NotFoundError()
 
-    return "ok"
+    const result = await database.update(product).set(ctx.body).where(eq(product.id, ctx.body.id)).returning()
+
+    return result
+
   }, {
-    body: t.Object({
-      topup: newTopupSchema,
-      amount: t.Number(),
-      id: t.String()
-    })
+    body: t.Omit(NewProductSchema, [ 'createdAt', 'updatedAt' ])
   })

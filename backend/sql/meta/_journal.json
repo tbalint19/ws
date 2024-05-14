@@ -5,50 +5,15 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1715101525471,
-      "tag": "0000_superb_nicolaos",
+      "when": 1715708864556,
+      "tag": "0000_charming_cloak",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "5",
-      "when": 1715101665075,
-      "tag": "0001_slimy_wiccan",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1715102340152,
-      "tag": "0002_black_next_avengers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1715109818697,
-      "tag": "0003_brief_tyrannus",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1715110647344,
-      "tag": "0004_fair_beyonder",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1715611190649,
-      "tag": "0005_condemned_microchip",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1715611438646,
-      "tag": "0006_cool_masked_marvel",
+      "when": 1715709747023,
+      "tag": "0001_brave_cassandra_nova",
       "breakpoints": true
     }
   ]

@@ -1,163 +1,196 @@
 import { timestamp, doublePrecision, integer, pgTable, text, uuid, AnyPgColumn } from "drizzle-orm/pg-core"
 
-export const admin = pgTable("admin", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  googleId: text("google_id").notNull(),
-  username: text("username").notNull(),
+export const invitation = pgTable("invitation", {
+  email: text("email").notNull(),
+  inviter: uuid("inviter").references((): AnyPgColumn => admin.id),
 
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
-// category, tag
+export const admin = pgTable("admin", {
+  invitationId: uuid("invitation_id").references((): AnyPgColumn => invitation.id),
+
+  googleId: text("google_id").notNull(),
+  username: text("username").notNull(),
+
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
+
+export const location = pgTable("location", {
+  name: text("name").notNull(),
+  googleMapUrl: text("google_map_url"),
+  
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
+
+export const category = pgTable("category", {
+  subcategoryOf: uuid("subcategory_of").references((): AnyPgColumn => category.id),
+
+  name: text("name").notNull(),
+
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
 
 export const product = pgTable("product", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  versionOf: uuid("version_of").references((): AnyPgColumn => product.id),
+
   name: text("name"),
   brand: text("brand"),
   model: text("model"),
   description: text("description"),
+  displayUnit: text("display_unit"),
+  
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
 
-  versionOf: uuid("version_of").references((): AnyPgColumn => product.id),
-
-  availableAmount: doublePrecision("available_amount").default(0),      // location
-  displayUnit: text("display_unit"),  // darab, pár, szál
-
-  grossWeightOfUnitInKg: doublePrecision("gross_weight_of_unit_in_kg"),
-  netWeightOfUnitInKg: doublePrecision("net_weight_of_unit_in_kg"),
-  grossVolumeOfUnitInLiter: doublePrecision("gross_volume_of_unit_in_liter"),
-  netVolumeOfUnitInLiter: doublePrecision("net_volume_of_unit_in_liter"),
-  grossWidthInMeter: doublePrecision("gross_width_in_meter"),
-  netWidthInMeter: doublePrecision("net_width_in_meter"),
-  grossHeightInMeter: doublePrecision("gross_height_in_meter"),
-  netHeightInMeter: doublePrecision("net_height_in_meter"),
-  grossLengthInMeter: doublePrecision("gross_length_in_meter"),
-  netLengthInMeter: doublePrecision("net_length_in_meter"),
-
+export const productAtLocation = pgTable("product_at_location", {
+  locationId: uuid("location_id").references(() => location.id).notNull(),
+  productId: uuid("product_id").references(() => product.id).notNull(),
+  
+  amount: doublePrecision("amount").notNull(),
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const file = pgTable("file", {
-  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  folder: text("folder").notNull(),
   url: text("url"),
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const productImage = pgTable("product_image", {
-  id: uuid("id").primaryKey().defaultRandom(),
-
   productId: uuid("product_id").references(() => product.id).notNull(),
-  fileId: uuid("file_id").references(() => file.id).notNull(),
+  fileId: uuid("file_id").references(() => file.id),
 
+  remoteUrl: text("remote_url"), 
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const productProperties = pgTable("product_property", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").references(() => product.id).notNull(),
+
   name: text("name").notNull(),
   value: text("value").notNull(),
   description: text("description"),
-  productId: uuid("product_id").references(() => product.id).notNull(),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const bundle = pgTable("bundle", {
-  id: uuid("id").primaryKey().defaultRandom(),
   productId: uuid("product_id").references(() => product.id).notNull(),
-  name: text("name"),   // raklap
+  name: text("name"),
   multiplier: doublePrecision("multiplier").notNull(),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const offer = pgTable("offer", {
-  id: uuid("id").primaryKey().defaultRandom(),
   price: doublePrecision("price").notNull(),
   currency: text("currency").notNull(),
-  // VAT
-
   availableAfter: timestamp('available_before'),
   availableBefore: timestamp('available_before'),
+
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const bundleOfOffer = pgTable("bundle_of_offer", {
-  id: uuid("id").primaryKey().defaultRandom(),
   bundleId: uuid("bundle_id").references(() => bundle.id).notNull(),
   offerId: uuid("offer_id").references(() => offer.id).notNull(),
+  
   amount: doublePrecision("amount").notNull(),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const productSuggestion = pgTable("product_suggestion", {
-  id: uuid("id").primaryKey().defaultRandom(),
   productId: uuid("product_id").references(() => product.id).notNull(),
   suggestionId: uuid("suggestion_id").references(() => product.id).notNull(),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const productLink = pgTable("product_link", {
-  id: uuid("id").primaryKey().defaultRandom(),
   productId: uuid("product_id").references(() => product.id).notNull(),
+  
   url: text("url").notNull(),
-  alt: text("alt"),
-  display: text("diplay"),
+  display: text("diplay").notNull(),
   summary: text("summary"),
   imgUrl: text("img_url"),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const productReview = pgTable("product_review", {
-  id: uuid("id").primaryKey().defaultRandom(),
   productId: uuid("product_id").references(() => product.id).notNull(),
+  
   start: integer("star").notNull(),
   content: text("content"),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const productQuestion = pgTable("product_question", {
-  id: uuid("id").primaryKey().defaultRandom(),
   productId: uuid("product_id").references(() => product.id).notNull(),
+  
   content: text("content").notNull(),
-  answer: text("content"),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
-export const bill = pgTable("bill", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name"),
-  url: text("url"),
+export const answer = pgTable("answer", {
+  questionId: uuid("question_id").references(() => productQuestion.id).notNull(),
 
+  content: text("content").notNull(),
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
 export const topup = pgTable("topup", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productAtLocationId: uuid("product_at_location_id").references(() => productAtLocation.id).notNull(),
+  fileId: uuid("file_id").references(() => file.id),
+
   amount: doublePrecision("available_amount").default(0).notNull(),
-  billUrl: text("bill_url"),
   price: doublePrecision("price"),
   currency: text("currency"),
-
+  
+  id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })

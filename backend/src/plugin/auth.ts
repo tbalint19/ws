@@ -14,13 +14,7 @@ type Session = Static<typeof SessionSchema>
 
 const login = async (payload: IdTokenPayload): Promise<Session | null> => {
   
-  
-  console.log(payload);
-  
-
   const result = await database.select().from(admin).where(eq(admin.googleId, payload.sub))
-
-  console.log(result);
   
   if (!result.length) {
     await database
