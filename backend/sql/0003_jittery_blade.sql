@@ -1,0 +1,1 @@
+ALTER TABLE "product_image" ALTER COLUMN "file_id" SET NOT NULL;

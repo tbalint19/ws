@@ -15,6 +15,27 @@
       "when": 1715709747023,
       "tag": "0001_brave_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1715763133588,
+      "tag": "0002_adorable_maestro",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1715763226790,
+      "tag": "0003_jittery_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1715764041896,
+      "tag": "0004_hard_doomsday",
+      "breakpoints": true
     }
   ]
 }

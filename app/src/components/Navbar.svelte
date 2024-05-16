@@ -19,8 +19,8 @@
   const user = getContext<Readable<User>>("user")
 
   const menuItems = $user ? [
-    { display: "Categories", link: { path: "/categories" } },
-    { display: "Products", link: { path: "/products" } },
+    { display: "Locations", link: { path: "/locations" } },
+    { display: "Products", link: { path: "/categories" } },
     { display: "Uploads", items: [
       { display: "Images", link: { path: "/gallery" } },
       { display: "Documents", link: { path: "/documents" } },

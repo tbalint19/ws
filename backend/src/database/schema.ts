@@ -1,4 +1,4 @@
-import { timestamp, doublePrecision, integer, pgTable, text, uuid, AnyPgColumn } from "drizzle-orm/pg-core"
+import { boolean, timestamp, doublePrecision, integer, pgTable, text, uuid, AnyPgColumn } from "drizzle-orm/pg-core"
 
 export const invitation = pgTable("invitation", {
   email: text("email").notNull(),
@@ -47,6 +47,7 @@ export const product = pgTable("product", {
   model: text("model"),
   description: text("description"),
   displayUnit: text("display_unit"),
+  isArchived: boolean("is_archived").default(false),
   
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
@@ -76,16 +77,14 @@ export const file = pgTable("file", {
 
 export const productImage = pgTable("product_image", {
   productId: uuid("product_id").references(() => product.id).notNull(),
-  fileId: uuid("file_id").references(() => file.id),
-
-  remoteUrl: text("remote_url"), 
+  fileId: uuid("file_id").references(() => file.id).notNull(),
   
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
-export const productProperties = pgTable("product_property", {
+export const productProperty = pgTable("product_property", {
   productId: uuid("product_id").references(() => product.id).notNull(),
 
   name: text("name").notNull(),
@@ -132,6 +131,8 @@ export const bundleOfOffer = pgTable("bundle_of_offer", {
 export const productSuggestion = pgTable("product_suggestion", {
   productId: uuid("product_id").references(() => product.id).notNull(),
   suggestionId: uuid("suggestion_id").references(() => product.id).notNull(),
+
+  content: text("content").notNull(),
   
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
@@ -140,11 +141,11 @@ export const productSuggestion = pgTable("product_suggestion", {
 
 export const productLink = pgTable("product_link", {
   productId: uuid("product_id").references(() => product.id).notNull(),
+  imageId: uuid("image_id").references(() => file.id),
   
   url: text("url").notNull(),
   display: text("diplay").notNull(),
   summary: text("summary"),
-  imgUrl: text("img_url"),
   
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
