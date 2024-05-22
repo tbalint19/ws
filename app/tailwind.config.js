@@ -4,7 +4,9 @@ export default {
   theme: {
     extend: {
       gridTemplateColumns: {
+        '4cols': 'repeat(4, 1fr)',
         '3cols': 'repeat(3, 1fr)',
+        '2cols': 'repeat(2, 1fr)',
       }
     }
   },
@@ -12,5 +14,9 @@ export default {
   daisyui: {
     themes: ["retro"],
   },
+  safelist: [
+    'btn-success',
+    'btn-error',
+  ]
 }
 

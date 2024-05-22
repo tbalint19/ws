@@ -3,7 +3,7 @@ import { authPlugin } from "../../plugin/auth";
 import { database } from "../../database/setup";
 import { createInsertSchema } from "drizzle-typebox";
 import { AuthenticationError } from "../../lib/authPlugin";
-import { eq, and, count, like, or } from "drizzle-orm";
+import { eq, and, count, like, or, SQL, isNull } from "drizzle-orm";
 import {
   product,
   productProperty,
@@ -13,6 +13,7 @@ import {
   bundle,
   bundleOfOffer,
   offer,
+  categoryToProduct,
 } from "../../database/schema";
  
 const ProductSchema = createInsertSchema(product)
@@ -44,21 +45,33 @@ export const products = new Elysia()
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const result = !ctx.query.name ? await database
-      .select()
+    const filters: SQL[] = []
+    if (ctx.query.name)
+      filters.push(like(product.name, `%${ctx.query.name}%`))
+
+    if (ctx.query.category) {
+      if (ctx.query.category === "orphan")
+        filters.push(isNull(categoryToProduct.categoryId))
+      else if (ctx.query.category !== "null")
+        filters.push(eq(categoryToProduct.categoryId, ctx.query.category))
+    }
+
+    const result = await database
+      .select({ product })
       .from(product)
-      .catch(() => {}) : await database
-      .select()
-      .from(product)
-      .where(or(like(product.name, ``), like(product.brand, ``), like(product.model, ``)))
+      .leftJoin(categoryToProduct, eq(product.id, categoryToProduct.productId))
+      .where(and(...filters))
       .catch(() => {})
     
     if (!result)
       throw new InternalServerError()
 
-    return result
+    return result.map(({ product }) => product)
   }, {
-    query: (t.Object({ name: t.Optional(t.String()) }))
+    query: t.Object({
+      name:  t.Optional(t.String()),
+      category:  t.Optional(t.String()),
+    })
   })
   .get("/api/products/:id", async (ctx) => {
     if (!ctx.user)
@@ -69,6 +82,8 @@ export const products = new Elysia()
       .from(product)
       .where(eq(product.id, ctx.params.id))
       .catch(() => {})
+
+    // and all related properties
 
     if (!result)
       throw new InternalServerError()
@@ -94,34 +109,60 @@ export const products = new Elysia()
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const result = await database
-      .insert(product)
-      .values(ctx.body)
-      .returning()
-      .catch(() => {})
+    const result = await database.transaction(async (transaction) => {
+      const insertedProducts = await transaction
+        .insert(product)
+        .values(ctx.body.product)
+        .returning()
+        .catch(() => {})
+      if (!insertedProducts || !insertedProducts[0])
+        return
+
+      const categoryId = ctx.body.categoryId
+      if (!categoryId)
+        return { product: insertedProducts[0], categoryToProduct: null }
+      
+      const insertedCategories = await transaction
+        .insert(categoryToProduct)
+        .values({ productId: insertedProducts[0].id, categoryId: categoryId })
+        .returning()
+        .catch(() => {})
+
+      if (!insertedCategories || !insertedCategories[0])
+        return transaction.rollback()
+
+      return { product: insertedProducts[0], categoryToProduct: insertedCategories[0] }
+    })
 
     if (!result)
       throw new InternalServerError()
 
     return result
   }, {
-    body: NewProductSchema
+    body: t.Intersect([
+      t.Object({
+        product: NewProductSchema
+      }),
+      t.Object({
+        categoryId: t.Optional(t.String())
+      })
+    ])
   })
   .patch("/api/products/:id", async (ctx) => {
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const result = await database
+    const updatedProducts = await database
       .update(product)
       .set(ctx.body)
       .where(eq(product.id, ctx.params.id))
       .returning()
       .catch(() => {})
 
-    if (!result)
+    if (!updatedProducts || !updatedProducts[0])
       throw new InternalServerError()
 
-    return result[0]
+    return { product: updatedProducts[0] }
   }, {
     body: UpdatedProductSchema
   })
@@ -399,6 +440,11 @@ export const products = new Elysia()
       .values({ productId: ctx.params.productId, ...ctx.body })
       .returning()
       .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
   }, {
     body: NewBundleSchema
   })
@@ -412,6 +458,11 @@ export const products = new Elysia()
       .where(and(eq(bundle.productId, ctx.params.productId), eq(bundle.id, ctx.params.id)))
       .returning()
       .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
   }, {
     body: UpdatedBundleSchema
   })
@@ -436,7 +487,7 @@ export const products = new Elysia()
     if (!result)
       throw new InternalServerError()
 
-    return result
+    return result[0]
   })
   .get("/api/offers/:productId", async (ctx) => {
     if (!ctx.user)

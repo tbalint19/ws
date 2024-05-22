@@ -4,82 +4,8 @@
   import type { User } from "../../stores/user";
   import { type AppClient } from "../../api/appClient";
   import { type NotificationCTX } from "$lib/components/RequestNotifications/context";
-  import Modal from "$lib/components/Modal.svelte"
-  import FileUpload from "$lib/components/FileUpload.svelte"
 
-  const http = getContext<AppClient>('client')
-  const notifications = getContext<NotificationCTX>('notifications')
-
-  type Product = NonNullable<Awaited<ReturnType<typeof http.api.products.get>>['data']>[0]
-
-  let products: Product[] = []
-
-  let name = ""
-  let description = ""
-  let model = ""
-  let brand = ""
-  let displayUnit = ""
-  let grossWeightOfUnitInKg = ""
-  let netWeightOfUnitInKg = ""
-  let grossVolumeOfUnitInLiter = ""
-  let netVolumeOfUnitInLiter = ""
-  let grossWidthInMeter = ""
-  let netWidthInMeter = ""
-  let grossHeightInMeter = ""
-  let netHeightInMeter = ""
-  let grossLengthInMeter = ""
-  let netLengthInMeter = ""
-
-
-  let isCreating = false
-  let isLoading = false
-
-  const loadProducts = async () => {
-    isLoading = true
-    const response = await http.api.products.get().catch(() => notifications.warn())
-    isLoading = false
-    if (!response || !response.data)
-      return
-    notifications.report()
-    console.log(response.data);
-    
-    products = response.data
-  }
-
-  let createOpen = false
-  const createProduct = async () => {
-    isCreating = true
-    const response = await http.api.products.post({
-      name, description, brand, model, displayUnit
-    }).catch(() => notifications.warn())
-    isCreating = false
-    if (!response)
-      return
-    if (response.error)
-      return notifications.warn()
-    notifications.report()
-  }
-
-  let productToTopup: Product | undefined
-  let amount = ""
-  let price = ""
-  let currency = ""
-  const createTopup = async () => {
-    if (!productToTopup)
-      return
-    const response = await http.api.topup.post({
-      id: productToTopup.id,
-      amount: +amount,
-      topup: {
-        productId: productToTopup.id,
-        price: +price,
-        currency,
-        amount: +amount,
-      }
-    })
-  }
-
-  const user = getContext<Readable<User>>("user")
+  import Link from "../../components/elements/Link.svelte";
 </script>
 
 <svelte:head>
@@ -87,70 +13,46 @@
   <!-- <meta name="description" content={data.items?.map(i => i).join(", ")} /> -->
 </svelte:head>
 
-<main class="lg:w-3/4 m-auto">
-
-  <div>
-    <button class="btn btn-info" on:click={() => createOpen = true}>Create product</button>
-    <button class="mt-4 btn btn-info" on:click={loadProducts}>Refresh</button>
+<main>
+  <div class="p-8 grid grid-cols-4cols gap-4">
+    <div class="card card-body bg-base-300 text-base-content">
+      <div class="px-16 py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24"><path fill="currentColor" d="M5 2h14v2h-1v4h4v2h-1v10h1v2H2v-2h1V10H2V8h4V4H5zm3 2v4h8V4zm-3 6v10h3v-7h8v7h3V10zm9 10v-5h-4v5zM10.998 4.998h2.004v2.004h-2.004z"/></svg>
+      </div>
+      <Link display="Locations" href="/locations" />
+    </div>
+    <div class="card card-body bg-base-300 text-base-content">
+      <div class="px-16 py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 2048 2048"><path fill="currentColor" d="M1024 1000v959l-64 32l-832-415V536l832-416l832 416v744h-128V680zm-64-736L719 384l621 314l245-122zm-64 1552v-816L256 680v816zM335 576l625 312l238-118l-622-314zm1073 1216v-128h640v128zm0-384h640v128h-640zm-256 640v-128h128v128zm0-512v-128h128v128zm0 256v-128h128v128zm-128 24h1zm384 232v-128h640v128z"/></svg>
+      </div>
+      <Link display="Products" href="/products" />
+    </div>
+    <div class="card card-body bg-base-300 text-base-content">
+      <div class="px-16 py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 256 256"><path fill="currentColor" d="m213.66 66.34l-40-40A8 8 0 0 0 168 24H88a16 16 0 0 0-16 16v16H56a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h112a16 16 0 0 0 16-16v-16h16a16 16 0 0 0 16-16V72a8 8 0 0 0-2.34-5.66M168 216H56V72h76.69L168 107.31zm32-32h-16v-80a8 8 0 0 0-2.34-5.66l-40-40A8 8 0 0 0 136 56H88V40h76.69L200 75.31Zm-56-32a8 8 0 0 1-8 8H88a8 8 0 0 1 0-16h48a8 8 0 0 1 8 8m0 32a8 8 0 0 1-8 8H88a8 8 0 0 1 0-16h48a8 8 0 0 1 8 8"/></svg>
+      </div>
+      <Link display="Files" href="/gallery" />
+    </div>
+    <div class="card card-body bg-base-300 text-base-content">
+      <div class="px-16 py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12c5.16-1.26 9-6.45 9-12V5Zm0 3.9a3 3 0 1 1-3 3a3 3 0 0 1 3-3m0 7.9c2 0 6 1.09 6 3.08a7.2 7.2 0 0 1-12 0c0-1.99 4-3.08 6-3.08"/></svg>
+      </div>
+      <Link display="Permissions" href="/permissions" />
+    </div>
   </div>
 
-  <div class="divider">Products</div>
-
-  {#if createOpen}
-  <Modal on:clickOut={() => createOpen = false}>
-  <section class="card card-body bg-base-300 text-base-content">
-    <div class="flex gap-4">
-      <div class="flex flex-col gap-2">
-        <h1>New Product</h1>
-        <input placeholder="Name" type="text" class="input input-bordered" bind:value={name} />
-        <input placeholder="Description" type="text" class="input input-bordered" bind:value={description} />
-        <input placeholder="Brand (optional)" type="text" class="input input-bordered" bind:value={brand} />
-        <input placeholder="Model (optional)" type="text" class="input input-bordered" bind:value={model} />
-        <input placeholder="Display unit (optional)" type="text" class="input input-bordered" bind:value={displayUnit} />
-    
-        <button disabled={isCreating} class="btn btn-success" on:click={createProduct}>Create product</button>
-      </div>
-  
-      <div class="flex flex-col gap-2">
-        <input placeholder="Gross weight (in kg - optional)" type="text" class="input input-bordered" bind:value={grossWeightOfUnitInKg} />
-        <input placeholder="Net weight (in kg - optional)" type="text" class="input input-bordered" bind:value={netWeightOfUnitInKg} />
-
-        <input placeholder="Gross volume (in liter - optional)" type="text" class="input input-bordered" bind:value={grossVolumeOfUnitInLiter} />
-        <input placeholder="Net volume (in liter - optional)" type="text" class="input input-bordered" bind:value={netVolumeOfUnitInLiter} />
-
-        <input placeholder="Gross width (in meter - optional)" type="text" class="input input-bordered" bind:value={grossWidthInMeter} />
-        <input placeholder="Net width (in meter - optional)" type="text" class="input input-bordered" bind:value={netWidthInMeter} />
-
-        <input placeholder="Gross height (in meter - optional)" type="text" class="input input-bordered" bind:value={grossHeightInMeter} />
-        <input placeholder="Net height (in meter - optional)" type="text" class="input input-bordered" bind:value={netHeightInMeter} />
-
-        <input placeholder="Gross length (in meter - optional)" type="text" class="input input-bordered" bind:value={grossLengthInMeter} />
-        <input placeholder="Net length (in meter - optional)" type="text" class="input input-bordered" bind:value={netLengthInMeter} />
-      </div>
-    </div>
-  </section>
-  </Modal>
-  {/if}
-    
-  {#if products}
-    <div class="grid grid-cols-3cols gap-2">
-      {#each products as product}
-      <div class="card card-body bg-base-300 text-base-content">
-        <p>{product.name} ({product.availableAmount})</p>
-        <button class="btn btn-success" on:click={() => productToTopup = product}>Topup</button>
-      </div>
-      {/each}
-    </div>
-  {/if}
-  {#if productToTopup}
-  <Modal on:clickOut={() => productToTopup = undefined}>
+  <div class="p-8 pb-0 grid grid-cols-4cols gap-4">
     <div class="card card-body bg-base-300 text-base-content">
-      <h1>{productToTopup.name}</h1>
-      <input class="input input-bordered my-4" type="text" placeholder="Amount" bind:value={amount}>
-      <input class="input input-bordered my-4" type="text" placeholder="Price" bind:value={price}>
-      <input class="input input-bordered my-4" type="text" placeholder="Currency" bind:value={currency}>
-      <button class="btn btn-success" on:click={createTopup}>Topup</button>
+      <div class="px-16 py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24"><path fill="currentColor" d="M5 2h14v2h-1v4h4v2h-1v10h1v2H2v-2h1V10H2V8h4V4H5zm3 2v4h8V4zm-3 6v10h3v-7h8v7h3V10zm9 10v-5h-4v5zM10.998 4.998h2.004v2.004h-2.004z"/></svg>
+      </div>
+      <Link display="Alerts" href="/alerts" />
     </div>
-  </Modal>
-  {/if}
+    <div class="card card-body bg-base-300 text-base-content">
+      <div class="px-16 py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24"><path fill="currentColor" d="M5 2h14v2h-1v4h4v2h-1v10h1v2H2v-2h1V10H2V8h4V4H5zm3 2v4h8V4zm-3 6v10h3v-7h8v7h3V10zm9 10v-5h-4v5zM10.998 4.998h2.004v2.004h-2.004z"/></svg>
+      </div>
+      <Link display="Sales" href="/sales" />
+    </div>
+  </div>
 </main>

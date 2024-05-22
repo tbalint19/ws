@@ -4,6 +4,7 @@
   import Navbar from "$lib/components/Navbar.svelte";
   import { builOpenIdUrl } from "$lib/util/buildOpenIdUrl";
   import { getContext, onMount } from "svelte";
+  import { page } from "$app/stores"
   import {
     PUBLIC_GOOGLE_AUTH_URL,
     PUBLIC_GOOGLE_CLIENT_ID,
@@ -18,13 +19,10 @@
 
   const user = getContext<Readable<User>>("user")
 
-  const menuItems = $user ? [
+  $: menuItems = $user && $page.url.pathname !== "/dashboard" ? [
     { display: "Locations", link: { path: "/locations" } },
-    { display: "Products", link: { path: "/categories" } },
-    { display: "Uploads", items: [
-      { display: "Images", link: { path: "/gallery" } },
-      { display: "Documents", link: { path: "/documents" } },
-    ] },
+    { display: "Products", link: { path: "/products" } },
+    { display: "Uploads", link: { path: "/gallery" } },
   ] : [ ]
 
   const actionButton = $user ?

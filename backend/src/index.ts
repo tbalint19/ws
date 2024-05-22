@@ -3,6 +3,7 @@ import { cors } from '@elysiajs/cors'
 import { authPlugin } from "./plugin/auth";
 import { products } from "./routes/admin/products";
 import { categories } from "./routes/admin/categories";
+import { locations } from "./routes/admin/locations";
 import { upload } from "./routes/admin/s3";
 
 const dev = async () => {
@@ -20,6 +21,7 @@ const api = new Elysia()
   })
   .use(authPlugin)
   .use(categories)
+  .use(locations)
   .use(products)
   .use(upload)
   .listen(3000);

@@ -1,4 +1,4 @@
-import { boolean, timestamp, doublePrecision, integer, pgTable, text, uuid, AnyPgColumn } from "drizzle-orm/pg-core"
+import { boolean, timestamp, doublePrecision, integer, pgTable, text, uuid, AnyPgColumn, date } from "drizzle-orm/pg-core"
 
 export const invitation = pgTable("invitation", {
   email: text("email").notNull(),
@@ -54,10 +54,20 @@ export const product = pgTable("product", {
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
 })
 
+export const categoryToProduct = pgTable("category_to_product", {
+  productId: uuid("product_id").references((): AnyPgColumn => product.id, { onDelete: 'cascade' }),
+  categoryId: uuid("category_id").references((): AnyPgColumn => category.id),
+
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
+
 export const productAtLocation = pgTable("product_at_location", {
   locationId: uuid("location_id").references(() => location.id).notNull(),
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   
+  expires: timestamp("expires"),
   amount: doublePrecision("amount").notNull(),
   
   id: uuid("id").primaryKey().defaultRandom(),
@@ -76,7 +86,7 @@ export const file = pgTable("file", {
 })
 
 export const productImage = pgTable("product_image", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   fileId: uuid("file_id").references(() => file.id).notNull(),
   
   id: uuid("id").primaryKey().defaultRandom(),
@@ -85,7 +95,7 @@ export const productImage = pgTable("product_image", {
 })
 
 export const productProperty = pgTable("product_property", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
 
   name: text("name").notNull(),
   value: text("value").notNull(),
@@ -97,7 +107,7 @@ export const productProperty = pgTable("product_property", {
 })
 
 export const bundle = pgTable("bundle", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   name: text("name"),
   multiplier: doublePrecision("multiplier").notNull(),
   
@@ -118,7 +128,7 @@ export const offer = pgTable("offer", {
 })
 
 export const bundleOfOffer = pgTable("bundle_of_offer", {
-  bundleId: uuid("bundle_id").references(() => bundle.id).notNull(),
+  bundleId: uuid("bundle_id").references(() => bundle.id, { onDelete: 'cascade' }).notNull(),
   offerId: uuid("offer_id").references(() => offer.id).notNull(),
   
   amount: doublePrecision("amount").notNull(),
@@ -129,7 +139,7 @@ export const bundleOfOffer = pgTable("bundle_of_offer", {
 })
 
 export const productSuggestion = pgTable("product_suggestion", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   suggestionId: uuid("suggestion_id").references(() => product.id).notNull(),
 
   content: text("content").notNull(),
@@ -140,7 +150,7 @@ export const productSuggestion = pgTable("product_suggestion", {
 })
 
 export const productLink = pgTable("product_link", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   imageId: uuid("image_id").references(() => file.id),
   
   url: text("url").notNull(),
@@ -153,7 +163,7 @@ export const productLink = pgTable("product_link", {
 })
 
 export const productReview = pgTable("product_review", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   
   start: integer("star").notNull(),
   content: text("content"),
@@ -164,7 +174,7 @@ export const productReview = pgTable("product_review", {
 })
 
 export const productQuestion = pgTable("product_question", {
-  productId: uuid("product_id").references(() => product.id).notNull(),
+  productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
   
   content: text("content").notNull(),
   
@@ -174,7 +184,7 @@ export const productQuestion = pgTable("product_question", {
 })
 
 export const answer = pgTable("answer", {
-  questionId: uuid("question_id").references(() => productQuestion.id).notNull(),
+  questionId: uuid("question_id").references(() => productQuestion.id, { onDelete: 'cascade' }).notNull(),
 
   content: text("content").notNull(),
   
@@ -184,7 +194,7 @@ export const answer = pgTable("answer", {
 })
 
 export const topup = pgTable("topup", {
-  productAtLocationId: uuid("product_at_location_id").references(() => productAtLocation.id).notNull(),
+  productAtLocationId: uuid("product_at_location_id").references(() => productAtLocation.id, { onDelete: 'cascade' }).notNull(),
   fileId: uuid("file_id").references(() => file.id),
 
   amount: doublePrecision("available_amount").default(0).notNull(),
