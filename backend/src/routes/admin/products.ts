@@ -39,6 +39,14 @@ const BundleSchema = createInsertSchema(bundle)
 const NewBundleSchema = t.Omit(BundleSchema, [ 'id', 'createdAt', 'updatedAt', 'productId' ])
 const UpdatedBundleSchema = t.Omit(BundleSchema, [ 'id', 'createdAt', 'updatedAt', 'productId' ])
 
+const OfferSchema = createInsertSchema(offer)
+const NewOfferSchema = t.Omit(OfferSchema, [ 'id', 'createdAt', 'updatedAt' ])
+const UpdatedOfferSchema = t.Omit(OfferSchema, [ 'id', 'createdAt', 'updatedAt' ])
+
+const BundleOfOfferSchema = createInsertSchema(bundleOfOffer)
+const NewBundleOfOfferSchema = t.Omit(BundleOfOfferSchema, [ 'id', 'createdAt', 'updatedAt' ])
+const UpdatedBundleOfOfferSchema = t.Omit(BundleOfOfferSchema, [ 'id', 'createdAt', 'updatedAt', 'offerId', 'bundleId' ])
+
 export const products = new Elysia()
   .use(authPlugin)
   .get("/api/products", async (ctx) => {
@@ -489,23 +497,157 @@ export const products = new Elysia()
 
     return result[0]
   })
-  .get("/api/offers/:productId", async (ctx) => {
+  .get("/api/offers", async (ctx) => {
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const result = await database
-      .select()
-      .from(offer)
-      .innerJoin(bundleOfOffer, eq(bundleOfOffer.offerId, offer.id))
-      .innerJoin(bundle, eq(bundle.id, bundleOfOffer.bundleId))
-      .innerJoin(product, eq(product.id, bundle.productId))
-      .where(eq(product.id, ctx.params.productId))
+    const result = ctx.query.bundleId ?
+      await database
+        .select({ offer })
+        .from(offer)
+        .innerJoin(bundleOfOffer, eq(bundleOfOffer.offerId, offer.id))
+        .innerJoin(bundle, eq(bundle.id, bundleOfOffer.bundleId))
+        .where(eq(bundle.id, ctx.query.bundleId))
+        .catch(() => {}) :
+      await database
+        .select({ offer })
+        .from(offer)
+        .leftJoin(bundleOfOffer, eq(bundleOfOffer.offerId, offer.id))
+        .where(isNull(bundleOfOffer.bundleId))
+        .catch(() => {})
 
     if (!result)
       throw new InternalServerError()
 
     return result.map(row => row.offer)
+  }, {
+    query: t.Object({
+      bundleId: t.Optional(t.String())
+    })
   })
+  .post("/api/offers", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .insert(offer)
+      .values(ctx.body)
+      .returning()
+      .catch((e) => {console.log(e)})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
+  }, {
+    body: NewOfferSchema
+  })
+  .patch("/api/offers/:id", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .update(offer)
+      .set(ctx.body)
+      .where(eq(offer.id, ctx.params.id))
+      .returning()
+      .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
+  }, {
+    body: UpdatedOfferSchema
+  })
+  .delete("/api/offers/:id", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .delete(offer)
+      .where(eq(offer.id, ctx.params.id))
+      .returning()
+      .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
+  })
+  .get("/api/bundle-of-offer", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .select({ bundle, product, bundleOfOffer })
+      .from(bundleOfOffer)
+      .where(eq(bundleOfOffer.offerId, ctx.query.offerId))
+      .innerJoin(bundle, eq(bundle.id, bundleOfOffer.bundleId))
+      .innerJoin(product, eq(product.id, bundle.productId))
+      .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result
+  }, {
+    query: t.Object({
+      offerId: t.String(),
+    })
+  })
+  .post("/api/bundle-of-offer", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .insert(bundleOfOffer)
+      .values({ ...ctx.body })
+      .returning()
+      .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError() 
+
+    return result[0]
+  }, {
+    body: NewBundleOfOfferSchema
+  })
+  .patch("/api/bundle-of-offer/:id", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .update(bundleOfOffer)
+      .set(ctx.body)
+      .where(eq(bundleOfOffer.id, ctx.params.id))
+      .returning()
+      .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
+  }, {
+    body: UpdatedBundleOfOfferSchema
+  })
+  .delete("/api/bundle-of-offer/:id", async (ctx) => {
+    if (!ctx.user)
+      throw new AuthenticationError()
+
+    const result = await database
+      .delete(bundleOfOffer)
+      .where(eq(bundleOfOffer.id, ctx.params.id))
+      .returning()
+      .catch(() => {})
+
+    if (!result)
+      throw new InternalServerError()
+
+    return result[0]
+  })
+    
+
 
 
 

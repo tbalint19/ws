@@ -1,14 +1,16 @@
 <script lang="ts">
   import Button from "./elements/Button.svelte";
-  import { getContext } from "svelte"
+  import { getContext, onMount } from "svelte"
   import type { AppClient } from "../api/appClient";
   import type { NotificationCTX } from "$lib/components/RequestNotifications/context";
   import { goto } from "$app/navigation";
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/Modal.svelte";
   import { slide } from "svelte/transition";
+  import BundlePresenter from "./BundlePresenter.svelte";
 
   type Product = NonNullable<Awaited<ReturnType<typeof client.api.products.get>>['data']>[0]
+  type Bundle = NonNullable<Awaited<ReturnType<ReturnType<typeof client.api.bundles>['get']>>['data']>[0]
 
   const client = getContext<AppClient>('client')
   const { warn } = getContext<NotificationCTX>('notifications')
@@ -21,6 +23,7 @@
   export let isMoving: boolean
   export let copyDisabled: boolean
   export let moveDisabled: boolean
+  export let offerId: string | null = null
 
   let detailsOpen = false
   let deleteOpen = false
@@ -38,6 +41,22 @@
     
     dispatchDelete('delete', response.data)
   }
+
+  let bundles: Bundle[] = []
+  let loadingBundles = false
+  const loadBundles = async () => {
+    loadingBundles = true
+    const response = await client.api.bundles({ productId: product.id }).get().catch(() => {})
+    loadingBundles = false
+    if (!response || !response.data)
+      return warn()
+
+    bundles = response.data
+  }
+
+  onMount(() => {
+    loadBundles()
+  })
 </script>
 
 <div class="card bg-base-200 text-base-content p-4">
@@ -75,6 +94,15 @@
   {#if detailsOpen}
     <div transition:slide class="flex flex-col gap-2 py-2">
       <div class="divider">Bundles</div>
+      {#if loadingBundles}
+        <div class="flex justify-center py-2">
+          <div class="loading loading-dots loading-lg"></div>
+        </div>
+      {:else}
+        {#each bundles as bundle (bundle.id)}
+          <BundlePresenter {bundle} {offerId} {isMoving} />
+        {/each}
+      {/if}   
     </div>  
   {/if}
 </div>

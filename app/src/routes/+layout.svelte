@@ -10,8 +10,12 @@
   import type { NotificationCTX } from "$lib/components/RequestNotifications/context";
   import { Duration } from "luxon";
   import { onMount } from "svelte";
+  import { createGlobalEventBus, type EventBus } from "../stores/eventbus";
 
   export let data
+
+  const eventbus = createGlobalEventBus()
+  setContext<EventBus>('eventbus', eventbus)
   
   const client = createClient(data.sessionToken)
   setContext<AppClient>('client', client)

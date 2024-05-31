@@ -129,7 +129,7 @@ export const categories = new Elysia()
       .where(eq(category.id, ctx.params.id))
       .returning()
       .catch(() => {})
-
+    
     if (!result)
       throw new InternalServerError()
 

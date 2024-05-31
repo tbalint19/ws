@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getContext } from "svelte"
+  import { getContext, onMount } from "svelte"
   import type { AppClient } from "../../api/appClient";
   import type { NotificationCTX } from "$lib/components/RequestNotifications/context";
 	import { writable } from "svelte/store";
@@ -9,11 +9,16 @@
   import Button from "../../components/elements/Button.svelte";
   import ProductController from "../../components/ProductController.svelte";
   import { slide } from "svelte/transition";
+	import type { EventBus } from "../../stores/eventbus";
 
   type Category = NonNullable<Awaited<ReturnType<typeof client.api.categories.get>>['data']>[0]
   type Product = NonNullable<Awaited<ReturnType<typeof client.api.products.get>>['data']>[0]
+  type Bundle = NonNullable<Awaited<ReturnType<ReturnType<typeof client.api.bundles>['get']>>['data']>[0]
+  type Offer = NonNullable<Awaited<ReturnType<typeof client.api.offers.post>>['data']>
+
 
   const client = getContext<AppClient>('client')
+  const { subscribe } = getContext<EventBus>('eventbus')
   const { warn } = getContext<NotificationCTX>('notifications')
 
   const selectedCategory = writable<Category | null>(null)
@@ -32,6 +37,7 @@
     if (!response || !response.data)
       return warn()
 
+    if ($selectedCategory?.id !== category?.id) return
     $relatedCategories = response.data
   }
 
@@ -45,12 +51,18 @@
     if (!response || !response.data)
       return warn()
 
+    const categoryId = $selectedCategory?.id || null
+    const queriedCategoryId = query.category || null
+    const stillRelevant = (categoryId === queriedCategoryId) || ((categoryId === null) && (queriedCategoryId === "orphan"))
+    if (!stillRelevant) return
     $relatedProducts = response.data    
   }
 
   const searchByName = () => {
     orphansShown = false
+    offersShown = false
     backToRoot()
+    categoriesShown = false
     loadProducts({ name: nameSearch })
   }
 
@@ -58,6 +70,7 @@
 
   let orphansShown = false
   const searchOrphans = () => {
+    offersShown = false
     orphansShown = true
     nameSearch = ""
     backToRoot()
@@ -65,10 +78,13 @@
   }
 
   const reset = () => {
+    offersShown = false
     orphansShown = false
     nameSearch = ""
+    nameFilter = ""
     backToRoot()
     $relatedProducts = []
+    offers = []
   }
 
   let isMoving = false
@@ -137,6 +153,7 @@
     $selectedCategory = category
   }
   const backToRoot = () => {
+    categoriesShown = true
     $path = []
     $selectedCategory = null
   }
@@ -163,20 +180,179 @@
 
   let nameFilter = ""
   $: displayedProducts = $relatedProducts.filter(p => nameFilter ? p.name?.includes(nameFilter) : true)
+  $: displayedOffers = offers.filter(o => nameFilter ? o.name?.includes(nameFilter) : true)
 
   selectedCategory.subscribe(getCategories)
   selectedCategory.subscribe(c => {
     $relatedProducts = []
     if (c) {
       orphansShown = false
+      offersShown = false
     }
   })
   selectedCategory.subscribe(c => c && searchByCategory(c.id))
 
   let categoriesShown = true
+
+  let editedOffer: Offer | undefined
+  let nameInput = ""
+  let priceInput = 0
+  let currencyInput = ""
+  let availableAfterInput = ""
+  let availableBeforeInput = ""
+
+  $: canSaveOffer = nameInput.length > 3 && currencyInput.length && (!editedOffer || nameInput !== editedOffer.name || priceInput !== editedOffer.price || currencyInput !== editedOffer.currency)
+  let isSaving = false
+  const save = async () => {
+    isSaving = true
+    const response = editedOffer ? await client.api.offers({ id: editedOffer.id }).patch({
+      name: nameInput,
+      price: priceInput,
+      currency: currencyInput,
+    }).catch(() => {}) : await client.api.offers.post({
+      name: nameInput,
+      price: priceInput,
+      currency: currencyInput,
+    }).catch(() => {})
+    isSaving = false
+    if (!response || !response.data)
+      return warn()
+
+    editedOffer = response.data
+    if (offersShown) {
+      if (!offers.some(o => o.id === response.data.id))
+        offers = [ ...offers, response.data ]
+      else
+        offers = offers.map(o => o.id === response.data.id ? response.data : o)
+    }
+  }
+
+  let offerDrawerShown = false
+
+  const createOffer = () => {
+    editedOffer = undefined
+    offerDrawerShown = true
+    nameInput = ""
+    priceInput = 0
+    currencyInput = ""
+    window.scrollTo({ behavior: "smooth", top: 0 })
+  }
+
+  const editOffer = (offer: Offer) => {
+    editedOffer = offer
+    offerDrawerShown = true
+    nameInput = offer.name || ""
+    priceInput = offer.price
+    currencyInput = offer.currency
+    window.scrollTo({ behavior: "smooth", top: 0 })
+  }
+
+  const closeOfferDrawer = () => {
+    offerDrawerShown = false
+    editedOffer = undefined
+  }
+
+  let offersShown = false
+  let offers: Offer[] = []
+  let loadingOffers = false
+  const loadOffers = async (bundleId?: string) => {
+    loadingOffers = true
+    const query = bundleId ? { bundleId } : {}
+    const response = await client.api.offers.get({ query }).catch(() => {})
+    loadingOffers = false
+    if (!response || !response.data)
+      return warn()
+
+    offers = response.data
+  }
+
+  let deletingOffer = false
+  const deleteOffer = async (id: string) => {
+    deletingOffer = true
+    const response = await client.api.offers({ id }).delete().catch(() => {})
+    deletingOffer = false
+    if (!response || !response.data)
+      return warn()
+
+    offers = offers.filter(o => o.id !== id)
+  }
+
+  const handleLoadOffers = (id?: string) => {
+    reset()
+    offersShown = true
+    loadOffers(id)
+  }
+
+  relatedCategories.subscribe(arr => {
+    if (isLoadingCategories) return
+    if (!arr.length) categoriesShown = false
+    else categoriesShown = true
+  })
+
+  $: orphansShown && (() => {
+    categoriesShown = false
+  })()
+
+  $: offersShown && (() => {
+    categoriesShown = false
+  })()
+  
+  onMount(() => {
+    subscribe("EDIT_OFFER", editOffer)
+  })
 </script>
 
 <main>
+  <div class="bg-primary">
+    {#if offerDrawerShown}
+      <section class="px-4 pt-2 pb-4" transition:slide>
+        <div class="divider">{ editedOffer ? "Edit" : "Add" } offer</div>
+        <div class="flex gap-2 items-center">
+          <input
+            bind:value={nameInput}
+            type="text"
+            placeholder="Name"
+            class="input-bordered input w-full"
+          />
+          <input
+            bind:value={priceInput}
+            type="number"
+            placeholder="Price"
+            class="input-bordered input w-full"
+          />
+          <input
+            bind:value={currencyInput}
+            type="text"
+            placeholder="Currency"
+            class="input-bordered input w-full"
+          />
+          <div class="divider divider-horizontal"></div>
+          <input
+            bind:value={availableAfterInput}
+            type="date"
+            placeholder="Available after"
+            class="input-bordered input w-full"
+          />
+          <div class="flex justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" d="m9.929 4.858l6.364 6.364a1 1 0 0 1 0 1.414L9.929 19"/></svg>
+          </div>
+          <input
+            bind:value={availableBeforeInput} 
+            type="date"
+            placeholder="Available before"
+            class="input-bordered input w-full"
+          />
+          <div class="divider divider-horizontal"></div>
+          <Button disabled={!canSaveOffer || isSaving} on:click={save} loading={isSaving} type="save" />
+          <button class="btn btn-neutral" on:click={closeOfferDrawer}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 256 256"><path fill="currentColor" d="M216.49 191.51a12 12 0 0 1-17 17L128 137l-71.51 71.49a12 12 0 0 1-17-17l80-80a12 12 0 0 1 17 0Zm-160-63L128 57l71.51 71.52a12 12 0 0 0 17-17l-80-80a12 12 0 0 0-17 0l-80 80a12 12 0 0 0 17 17Z"/></svg>
+          </button>
+        </div>
+      </section>
+    {/if}
+    </div>
+
+
   {#if isConfirming}
   <Modal on:clickOut={() => isConfirming = false}>
     <div class="card card-body bg-base-300 text-base-content max-w-[450px]">
@@ -230,6 +406,14 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V9q0-.825.588-1.412T5 7h4v2H5v10h14V9h-4V7h4q.825 0 1.413.588T21 9v10q0 .825-.587 1.413T19 21zm7-5l-4-4l1.4-1.4l1.6 1.575V0h2v12.175l1.6-1.575L16 12z"/></svg>
         {/if}
       </button>
+      <div class="divider divider-horizontal"></div>
+      <button class="btn btn-primary" disabled={isLoadingCategories} on:click={createOffer}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="m21.41 11.58l-9-9C12.04 2.21 11.53 2 11 2H4a2 2 0 0 0-2 2v7c0 .53.21 1.04.59 1.41l.41.4c.9-.54 1.94-.81 3-.81a6 6 0 0 1 6 6c0 1.06-.28 2.09-.82 3l.4.4c.37.38.89.6 1.42.6s1.04-.21 1.41-.59l7-7c.38-.37.59-.88.59-1.41s-.21-1.04-.59-1.42M5.5 7A1.5 1.5 0 0 1 4 5.5A1.5 1.5 0 0 1 5.5 4A1.5 1.5 0 0 1 7 5.5A1.5 1.5 0 0 1 5.5 7M10 19H7v3H5v-3H2v-2h3v-3h2v3h3z"/></svg>
+      </button>
+      <button disabled={isMoving} class={`btn btn-primary ${ offersShown ? "" : "btn-outline" }`} on:click={offersShown ? reset : () => handleLoadOffers()}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 32 32"><path fill="currentColor" d="M27 22.141V18a2 2 0 0 0-2-2h-8v-4h2a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2v4H7a2 2 0 0 0-2 2v4.142a4 4 0 1 0 2 0V18h8v4.142a4 4 0 1 0 2 0V18h8v4.141a4 4 0 1 0 2 0M13 4h6l.001 6H13ZM8 26a2 2 0 1 1-2-2a2 2 0 0 1 2 2m10 0a2 2 0 1 1-2-2a2.003 2.003 0 0 1 2 2m8 2a2 2 0 1 1 2-2a2 2 0 0 1-2 2"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m0 16H5V5h14zM17 8.4L13.4 12l3.6 3.6l-1.4 1.4l-3.6-3.6L8.4 17L7 15.6l3.6-3.6L7 8.4L8.4 7l3.6 3.6L15.6 7z"/></svg>
+      </button>
     </div>
   </div>
 
@@ -262,7 +446,7 @@
   </div>
   {/if}
 
-  <div class="divider px-4">Products</div>
+  <div class="divider px-4">{ offersShown ? "Offers" : "Products" }</div>
 
   <div class="flex justify-between items-center px-4">
     <div class="flex gap-2 items-center">
@@ -274,7 +458,7 @@
       <button class="btn btn-warning" on:click={reset} disabled={isMoving}>
         <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-3 12.59L17.59 17L14 13.41L10.41 17L9 15.59L12.59 12L9 8.41L10.41 7L14 10.59L17.59 7L19 8.41L15.41 12"/></svg>
       </button>
-      <input type="text" class="input input-bordered" placeholder="Search in all categories" bind:value={nameSearch}>
+      <input type="text" class="input input-bordered w-80" placeholder="Search PRODUCTS in all categories" bind:value={nameSearch}>
       <button class="btn btn-info" on:click={searchByName} disabled={isMoving}>
         <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14"/></svg>
       </button>
@@ -289,6 +473,7 @@
 
   <div class="divider px-4">Results</div>
 
+  {#if !offersShown}
   <div class="flex flex-col gap-4 px-4 py-8">
     {#if isLoadingProducts}
     <div class="flex justify-center py-4">
@@ -304,6 +489,7 @@
         <ProductController
           {product}
           {isMoving}
+          offerId={editedOffer?.id}
           on:delete={() => handleDelete(product)}
           on:selectToMove={() => selectToMove(product, $selectedCategory || undefined)}
           on:selectToCopy={() => selectToMove(product)}
@@ -313,4 +499,34 @@
       {/if}
     {/if}
   </div>
+  {:else}
+  <div class="flex flex-col gap-4 px-4 py-8">
+    {#if loadingOffers}
+    <div class="flex justify-center py-4">
+      <div class="loading loading-spinner loading-lg"></div>
+    </div>
+    {:else}
+      {#if !offers.length}
+      <div class="flex justify-center py-4 text-9xl opacity-25">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M17.5 12a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11m-2.476 3.024a.5.5 0 0 0 0 .707l1.769 1.77l-1.767 1.766a.5.5 0 1 0 .707.708l1.767-1.767l1.77 1.769a.5.5 0 1 0 .707-.707l-1.769-1.77l1.771-1.77a.5.5 0 0 0-.707-.707l-1.771 1.77l-1.77-1.77a.5.5 0 0 0-.707 0M17.75 3A3.25 3.25 0 0 1 21 6.25l.001 5.773a6.5 6.5 0 0 0-1.5-.71L19.5 8.5h-15v9.25c0 .966.784 1.75 1.75 1.75h5.064c.172.534.412 1.038.709 1.501L6.25 21A3.25 3.25 0 0 1 3 17.75V6.25A3.25 3.25 0 0 1 6.25 3zm0 1.5H6.25A1.75 1.75 0 0 0 4.5 6.25V7h15v-.75a1.75 1.75 0 0 0-1.75-1.75"/></svg>
+      </div>
+      {:else}
+      {#each displayedOffers as offer (offer.id)}
+        <div class="card bg-primary text-primary-content p-4 justify-between">
+          <div class="flex flex-row justify-between items-center">
+            <p class="text-2xl font-bold">{ offer.name } ({ offer.price } { offer.currency })</p>
+            <div class="flex gap-2">
+              <Button type="delete" disabled={deletingOffer} loading={deletingOffer} on:click={() => deleteOffer(offer.id)} />
+              <div class="divider divider-horizontal"></div>
+              <button class="btn btn-outline" disabled={deletingOffer} on:click={() => editOffer(offer)}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 32 32"><path fill="currentColor" d="M27.87 7.863L23.024 4.82l-7.89 12.566l4.843 3.04zM14.395 21.25l-.107 2.855l2.527-1.337l2.35-1.24l-4.673-2.936zM29.163 3.24L26.63 1.647a1.364 1.364 0 0 0-1.88.43l-1 1.588l4.843 3.042l1-1.586c.4-.64.21-1.483-.43-1.883zm-3.965 23.82c0 .275-.225.5-.5.5h-19a.5.5 0 0 1-.5-.5v-19a.5.5 0 0 1 .5-.5h13.244l1.884-3H5.698c-1.93 0-3.5 1.57-3.5 3.5v19c0 1.93 1.57 3.5 3.5 3.5h19c1.93 0 3.5-1.57 3.5-3.5V11.097l-3 4.776v11.19z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      {/each}
+      {/if}
+    {/if}
+  </div>
+  {/if}
 </main>

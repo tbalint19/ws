@@ -117,9 +117,10 @@ export const bundle = pgTable("bundle", {
 })
 
 export const offer = pgTable("offer", {
+  name: text("name"),
   price: doublePrecision("price").notNull(),
   currency: text("currency").notNull(),
-  availableAfter: timestamp('available_before'),
+  availableAfter: timestamp('available_after'),
   availableBefore: timestamp('available_before'),
 
   id: uuid("id").primaryKey().defaultRandom(),
@@ -133,6 +134,15 @@ export const bundleOfOffer = pgTable("bundle_of_offer", {
   
   amount: doublePrecision("amount").notNull(),
   
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),
+})
+
+export const offerOfLocation = pgTable("offer_of_location", {
+  offerId: uuid("offer_id").references(() => offer.id, { onDelete: 'cascade' }).notNull(),
+  locationId: uuid("location_id").references(() => location.id).notNull(),
+
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 }).$onUpdate(() => new Date()),

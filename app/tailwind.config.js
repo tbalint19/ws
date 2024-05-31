@@ -12,7 +12,7 @@ export default {
   },
   plugins: [require("daisyui")],
   daisyui: {
-    themes: ["retro"],
+    themes: ["wireframe"],
   },
   safelist: [
     'btn-success',

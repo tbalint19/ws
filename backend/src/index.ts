@@ -7,16 +7,16 @@ import { locations } from "./routes/admin/locations";
 import { upload } from "./routes/admin/s3";
 
 const dev = async () => {
-  const sleep = () => new Promise<void>((res, rej) => setTimeout(() => res(), 2000))
+  const sleep = () => new Promise<void>((res, rej) => setTimeout(() => res(), 1000))
   await sleep()
-  if (Math.random() > 0.5)
+  if (Math.random() > 1)
     throw new Error()
 }
 
 const api = new Elysia()
   .use(cors())
   .derive(async ctx => {
-    //await dev()
+    await dev()
     return ctx
   })
   .use(authPlugin)
