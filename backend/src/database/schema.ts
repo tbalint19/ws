@@ -119,7 +119,6 @@ export const bundle = pgTable("bundle", {
 export const offer = pgTable("offer", {
   name: text("name"),
   price: doublePrecision("price").notNull(),
-  currency: text("currency").notNull(),
   availableAfter: timestamp('available_after'),
   availableBefore: timestamp('available_before'),
 

@@ -9,6 +9,7 @@
   import Button from "../../components/elements/Button.svelte";
   import ProductController from "../../components/ProductController.svelte";
   import { slide } from "svelte/transition";
+  import OfferOfLocationEditor from "../../components/OfferOfLocationEditor.svelte";
 	import type { EventBus } from "../../stores/eventbus";
 
   type Category = NonNullable<Awaited<ReturnType<typeof client.api.categories.get>>['data']>[0]
@@ -197,22 +198,19 @@
   let editedOffer: Offer | undefined
   let nameInput = ""
   let priceInput = 0
-  let currencyInput = ""
   let availableAfterInput = ""
   let availableBeforeInput = ""
 
-  $: canSaveOffer = nameInput.length > 3 && currencyInput.length && (!editedOffer || nameInput !== editedOffer.name || priceInput !== editedOffer.price || currencyInput !== editedOffer.currency)
+  $: canSaveOffer = nameInput.length > 3 && priceInput > 0 && (!editedOffer || nameInput !== editedOffer.name || priceInput !== editedOffer.price)
   let isSaving = false
   const save = async () => {
     isSaving = true
     const response = editedOffer ? await client.api.offers({ id: editedOffer.id }).patch({
       name: nameInput,
       price: priceInput,
-      currency: currencyInput,
     }).catch(() => {}) : await client.api.offers.post({
       name: nameInput,
       price: priceInput,
-      currency: currencyInput,
     }).catch(() => {})
     isSaving = false
     if (!response || !response.data)
@@ -234,7 +232,6 @@
     offerDrawerShown = true
     nameInput = ""
     priceInput = 0
-    currencyInput = ""
     window.scrollTo({ behavior: "smooth", top: 0 })
   }
 
@@ -243,7 +240,6 @@
     offerDrawerShown = true
     nameInput = offer.name || ""
     priceInput = offer.price
-    currencyInput = offer.currency
     window.scrollTo({ behavior: "smooth", top: 0 })
   }
 
@@ -296,6 +292,8 @@
   $: offersShown && (() => {
     categoriesShown = false
   })()
+
+  let locationSelectorShown = false
   
   onMount(() => {
     subscribe("EDIT_OFFER", editOffer)
@@ -308,6 +306,10 @@
       <section class="px-4 pt-2 pb-4" transition:slide>
         <div class="divider">{ editedOffer ? "Edit" : "Add" } offer</div>
         <div class="flex gap-2 items-center">
+          <button class="btn btn-neutral" disabled={!editedOffer} on:click={() => locationSelectorShown = true}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6.143v12.824l5.065-2.17l6 3L20 17.68V4.857l1.303-.558a.5.5 0 0 1 .697.46V19l-7 3l-6-3l-6.303 2.701a.5.5 0 0 1-.697-.46V7zm12.243 5.1L12 15.485l-4.243-4.242a6 6 0 1 1 8.486 0M12 12.657l2.828-2.829a4 4 0 1 0-5.656 0z"/></svg>
+          </button>
+          <div class="divider divider-horizontal"></div>
           <input
             bind:value={nameInput}
             type="text"
@@ -318,12 +320,6 @@
             bind:value={priceInput}
             type="number"
             placeholder="Price"
-            class="input-bordered input w-full"
-          />
-          <input
-            bind:value={currencyInput}
-            type="text"
-            placeholder="Currency"
             class="input-bordered input w-full"
           />
           <div class="divider divider-horizontal"></div>
@@ -352,6 +348,11 @@
     {/if}
     </div>
 
+  {#if locationSelectorShown && editedOffer}
+    <Modal on:clickOut={() => locationSelectorShown = false}>
+      <OfferOfLocationEditor offer={editedOffer} on:loadError={() => locationSelectorShown = false} />
+    </Modal>
+  {/if}
 
   {#if isConfirming}
   <Modal on:clickOut={() => isConfirming = false}>
@@ -514,7 +515,7 @@
       {#each displayedOffers as offer (offer.id)}
         <div class="card bg-primary text-primary-content p-4 justify-between">
           <div class="flex flex-row justify-between items-center">
-            <p class="text-2xl font-bold">{ offer.name } ({ offer.price } { offer.currency })</p>
+            <p class="text-2xl font-bold">{ offer.name }</p>
             <div class="flex gap-2">
               <Button type="delete" disabled={deletingOffer} loading={deletingOffer} on:click={() => deleteOffer(offer.id)} />
               <div class="divider divider-horizontal"></div>
