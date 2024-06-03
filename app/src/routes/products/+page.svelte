@@ -201,7 +201,7 @@
   let availableAfterInput = ""
   let availableBeforeInput = ""
 
-  $: canSaveOffer = nameInput.length > 3 && priceInput > 0 && (!editedOffer || nameInput !== editedOffer.name || priceInput !== editedOffer.price)
+  $: canSaveOffer = priceInput > 0 && (!editedOffer || nameInput !== editedOffer.name || priceInput !== editedOffer.price)
   let isSaving = false
   const save = async () => {
     isSaving = true
