@@ -40,9 +40,9 @@ export const category = pgTable("category", {
 })
 
 export const product = pgTable("product", {
-  versionOf: uuid("version_of").references((): AnyPgColumn => product.id),
+  variantOf: uuid("variant_of").references((): AnyPgColumn => product.id),
 
-  name: text("name"),
+  name: text("name").notNull(),
   brand: text("brand"),
   model: text("model"),
   description: text("description"),
@@ -108,7 +108,7 @@ export const productProperty = pgTable("product_property", {
 
 export const bundle = pgTable("bundle", {
   productId: uuid("product_id").references(() => product.id, { onDelete: 'cascade' }).notNull(),
-  name: text("name"),
+  name: text("name").notNull(),
   multiplier: doublePrecision("multiplier").notNull(),
   
   id: uuid("id").primaryKey().defaultRandom(),

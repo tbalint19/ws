@@ -8,6 +8,7 @@
   import Modal from "$lib/components/Modal.svelte";
   import { slide } from "svelte/transition";
   import BundlePresenter from "./BundlePresenter.svelte";
+	import { writable, type Writable } from "svelte/store";
 
   type Product = NonNullable<Awaited<ReturnType<typeof client.api.products.get>>['data']>[0]
   type Bundle = NonNullable<Awaited<ReturnType<ReturnType<typeof client.api.bundles>['get']>>['data']>[0]
@@ -24,6 +25,7 @@
   export let copyDisabled: boolean
   export let moveDisabled: boolean
   export let offerId: string | null = null
+  export let isNested = false
 
   let detailsOpen = false
   let deleteOpen = false
@@ -38,7 +40,8 @@
     deleting = false
     if (!response || !response.data)
       return warn()
-    
+
+    deleteOpen = false    
     dispatchDelete('delete', response.data)
   }
 
@@ -54,16 +57,40 @@
     bundles = response.data
   }
 
+  let variants: Product[] = []
+  let isLoadingVariants = false
+  const loadVariants = async () => {
+    isLoadingVariants = true
+    const response = await client.api.variants({ productId: product.id }).get().catch(() => {})
+    isLoadingVariants = false
+    if (!response || !response.data)
+      return warn()
+
+    variants = response.data
+  }
+
+  const delVariant = (variant: Product) => {
+    variants = variants.filter(v => v.id !== variant.id)
+  }
+
   onMount(() => {
     loadBundles()
   })
 </script>
 
-<div class="card bg-base-200 text-base-content p-4">
+<div class={`card bg-base-200 text-base-content py-4 ${isNested ? '' : 'px-4'}`}>
   <div class="flex flex-row justify-between items-center">
     <div class="flex items-center">
       <button class="btn btn-outline" on:click={() => detailsOpen = !detailsOpen}>
         <svg class={`${detailsOpen ? "" : "rotate-180"} transition-all`} xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><g fill="none" fill-rule="evenodd"><path d="M24 0v24H0V0zM12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093c.012.004.023 0 .029-.008l.004-.014l-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014l-.034.614c0 .012.007.02.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M10.94 7.94a1.5 1.5 0 0 1 2.12 0l5.658 5.656a1.5 1.5 0 1 1-2.122 2.121L12 11.122l-4.596 4.596a1.5 1.5 0 1 1-2.122-2.12z"/></g></svg>
+      </button>
+      <div class="divider divider-horizontal"></div>
+      <button class="btn btn-outline" on:click={loadVariants} disabled={isLoadingVariants}>
+        {#if isLoadingVariants}
+          <div class="loading loading-dots"></div>
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0m7 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0m7 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></svg>
+        {/if}
       </button>
       <div class="divider divider-horizontal"></div>
       <p class="text-2xl font-bold">{ product.name }</p>
@@ -105,6 +132,12 @@
       {/if}   
     </div>  
   {/if}
+  {#if variants.length}
+    <div class="divider">Variants</div>
+  {/if}
+  {#each variants as variant (variant.id)}
+    <svelte:self product={variant} copyDisabled={true} moveDisabled={true} isMoving={false} {offerId} isNested={true} on:delete={({ detail }) => delVariant(detail)} />
+  {/each}
 </div>
 
 {#if deleteOpen}

@@ -13,7 +13,7 @@ const dev = async () => {
     throw new Error()
 }
 
-const api = new Elysia()
+export const api = new Elysia()
   .use(cors())
   .derive(async ctx => {
     await dev()
@@ -24,7 +24,8 @@ const api = new Elysia()
   .use(locations)
   .use(products)
   .use(upload)
-  .listen(3000);
+
+api.listen(3000);
 
 console.log(
   `🦊 Elysia is running at ${api.server?.hostname}:${api.server?.port}`

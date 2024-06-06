@@ -11,3 +11,5 @@ export type Product = NonNullable<Awaited<ReturnType<AppClient['api']['products'
 
 export type Location = NonNullable<Awaited<ReturnType<AppClient['api']['locations']['get']>>['data']>[0]
 export type OfferOfLocation = NonNullable<Awaited<ReturnType<AppClient['api']['offer-of-location']['get']>>['data']>[0]['offer_of_location']
+
+export type ProductProperty = NonNullable<Awaited<ReturnType<ReturnType<AppClient['api']['properites']>['get']>>['data']>[0]

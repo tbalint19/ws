@@ -1,9 +1,9 @@
 import { Elysia, InternalServerError, NotFoundError, error, t } from "elysia";
 import { authPlugin } from "../../plugin/auth";
 import { database } from "../../database/setup";
-import { createInsertSchema } from "drizzle-typebox";
+import { createInsertSchema, createSelectSchema } from "drizzle-typebox";
 import { AuthenticationError } from "../../lib/authPlugin";
-import { eq, and, count, like, or, SQL, isNull } from "drizzle-orm";
+import { eq, and, count, like, or, SQL, isNull, InferSelectModel } from "drizzle-orm";
 import {
   product,
   productProperty,
@@ -15,10 +15,13 @@ import {
   offer,
   categoryToProduct,
 } from "../../database/schema";
- 
-const ProductSchema = createInsertSchema(product)
+
+type Product = InferSelectModel<typeof product>
+const ProductSchema = createInsertSchema(product, {
+  name: t.String({ minLength: 1 })
+})
 const NewProductSchema = t.Omit(ProductSchema, [ 'id', 'createdAt', 'updatedAt' ])
-const UpdatedProductSchema = t.Omit(ProductSchema, [ 'id', 'createdAt', 'updatedAt' ])
+const UpdatedProductSchema = t.Omit(ProductSchema, [ 'id', 'createdAt', 'updatedAt', 'variantId' ])
 
 const ProductPropertySchema = createInsertSchema(productProperty)
 const NewProductPropertySchema = t.Omit(ProductPropertySchema, [ 'id', 'createdAt', 'updatedAt', 'productId' ])
@@ -35,6 +38,7 @@ const ProductSuggestionSchema = createInsertSchema(productSuggestion)
 const NewProductSuggestionSchema = t.Omit(ProductSuggestionSchema, [ 'id', 'createdAt', 'updatedAt', 'productId' ])
 const UpdatedProductSuggestionSchema = t.Omit(ProductSuggestionSchema, [ 'id', 'createdAt', 'updatedAt', 'productId', 'suggestionId' ])
 
+type Bundle = InferSelectModel<typeof bundle>
 const BundleSchema = createInsertSchema(bundle)
 const NewBundleSchema = t.Omit(BundleSchema, [ 'id', 'createdAt', 'updatedAt', 'productId' ])
 const UpdatedBundleSchema = t.Omit(BundleSchema, [ 'id', 'createdAt', 'updatedAt', 'productId' ])
@@ -58,8 +62,10 @@ export const products = new Elysia()
       filters.push(like(product.name, `%${ctx.query.name}%`))
 
     if (ctx.query.category) {
-      if (ctx.query.category === "orphan")
+      if (ctx.query.category === "orphan") {
         filters.push(isNull(categoryToProduct.categoryId))
+        filters.push(isNull(product.variantOf))
+      }
       else if (ctx.query.category !== "null")
         filters.push(eq(categoryToProduct.categoryId, ctx.query.category))
     }
@@ -105,7 +111,7 @@ export const products = new Elysia()
     const result = await database
       .select()
       .from(product)
-      .where(eq(product.versionOf, ctx.params.productId))
+      .where(eq(product.variantOf, ctx.params.productId))
       .catch(() => {})
 
     if (!result)
@@ -117,6 +123,26 @@ export const products = new Elysia()
     if (!ctx.user)
       throw new AuthenticationError()
 
+    const variantOf = ctx.body.product.variantOf
+    let parentProduct: Product | null = null
+    if (variantOf) {
+      const result = await database
+        .select()
+        .from(product)
+        .where(eq(product.id, variantOf))
+        .catch(() => {})
+
+      if (!result)
+        throw new InternalServerError()
+
+      parentProduct = result[0]
+      if (!parentProduct)
+        throw new NotFoundError()
+      
+      if (parentProduct && parentProduct.variantOf)
+        return error(409, 'This product is already a variant of another product')
+    }
+
     const result = await database.transaction(async (transaction) => {
       const insertedProducts = await transaction
         .insert(product)
@@ -125,6 +151,28 @@ export const products = new Elysia()
         .catch(() => {})
       if (!insertedProducts || !insertedProducts[0])
         return
+
+      if (parentProduct) {
+        const relatedBundles = await transaction
+          .select()
+          .from(bundle)
+          .where(eq(bundle.productId, parentProduct.id))
+          .catch(() => {})
+
+        if (!relatedBundles)
+          return transaction.rollback()
+
+        for (const { id, createdAt, updatedAt, productId, ...relatedBundle } of relatedBundles) {
+          const result = await transaction
+            .insert(bundle)
+            .values({ ...relatedBundle, productId: insertedProducts[0].id })
+            .returning()
+            .catch(() => {})
+          
+          if (!result || !result[0])
+            return transaction.rollback()
+        }
+      }
 
       const categoryId = ctx.body.categoryId
       if (!categoryId)
@@ -140,7 +188,7 @@ export const products = new Elysia()
         return transaction.rollback()
 
       return { product: insertedProducts[0], categoryToProduct: insertedCategories[0] }
-    })
+    }).catch(() => {})
 
     if (!result)
       throw new InternalServerError()
@@ -217,7 +265,7 @@ export const products = new Elysia()
     if (!result)
       throw new InternalServerError()
 
-    return result
+    return result[0]
   }, {
     body: NewProductPropertySchema
   })
@@ -235,7 +283,7 @@ export const products = new Elysia()
     if (!result) 
       throw new InternalServerError()
 
-    return result
+    return result[0]
   }, {
     body: UpdatedProductPropertySchema
   })
@@ -252,7 +300,7 @@ export const products = new Elysia()
     if (!result)
       throw new InternalServerError()
 
-    return result
+    return result[0]
   })
   .get("/api/images/:productId", async (ctx) => {
     if (!ctx.user)
@@ -443,16 +491,51 @@ export const products = new Elysia()
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const result = await database
-      .insert(bundle)
-      .values({ productId: ctx.params.productId, ...ctx.body })
-      .returning()
+    const relatedProducts = await database
+      .select()
+      .from(product)
+      .where(eq(product.id, ctx.params.productId))
       .catch(() => {})
 
-    if (!result)
+    if (!relatedProducts)
       throw new InternalServerError()
 
-    return result[0]
+    if (!relatedProducts[0])
+      throw new NotFoundError()
+
+    const variants = await database
+      .select()
+      .from(product)
+      .where(eq(product.variantOf, ctx.params.productId))
+      .catch(() => {})
+
+    if (!variants)
+      throw new InternalServerError()
+
+    const transactionResult = await database.transaction(async (transaction) => {
+      let insertedBundles: Bundle[] = []
+      for (const product of [ ...relatedProducts, ...variants ]) {
+        const result = await transaction
+          .insert(bundle)
+          .values({ productId: product.id, ...ctx.body })
+          .returning()
+          .catch(() => {})
+
+        if (!result) {
+          transaction.rollback()
+          return
+        }
+
+        insertedBundles.push(result[0])
+      }
+
+      return insertedBundles[0]
+    }).catch(() => {})
+
+    if (!transactionResult)
+      throw new InternalServerError()
+
+    return transactionResult
   }, {
     body: NewBundleSchema
   })
@@ -460,17 +543,63 @@ export const products = new Elysia()
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const result = await database
-      .update(bundle)
-      .set(ctx.body)
-      .where(and(eq(bundle.productId, ctx.params.productId), eq(bundle.id, ctx.params.id)))
-      .returning()
+    const relatedProducts = await database
+      .select()
+      .from(product)
+      .where(eq(product.id, ctx.params.productId))
       .catch(() => {})
 
-    if (!result)
+    if (!relatedProducts)
       throw new InternalServerError()
 
-    return result[0]
+    if (!relatedProducts[0])
+      throw new NotFoundError()
+
+    const variants = await database
+      .select()
+      .from(product)
+      .where(eq(product.variantOf, ctx.params.productId))
+      .catch(() => {})
+
+    if (!variants)
+      throw new InternalServerError()
+
+    const bundles = await database
+      .select()
+      .from(bundle)
+      .where(eq(bundle.id, ctx.params.id))
+
+    if (!bundles)
+      throw new InternalServerError()
+
+    if (!bundles[0])
+      throw new NotFoundError()
+
+    const transactionResult = await database.transaction(async (transaction) => {
+      let updatedBundles: Bundle[] = []
+      for (const product of [ ...relatedProducts, ...variants ]) {
+        const result = await transaction
+          .update(bundle)
+          .set(ctx.body)
+          .where(and(eq(bundle.productId, product.id), eq(bundle.name, bundles[0].name)))
+          .returning()
+          .catch(() => {})
+        
+        if (!result) {
+          transaction.rollback()
+          return
+        }
+        
+        updatedBundles.push(result[0])
+      }
+
+      return updatedBundles[0]
+    }).catch(() => {})
+
+    if (!transactionResult)
+      throw new InternalServerError()
+
+    return transactionResult
   }, {
     body: UpdatedBundleSchema
   })
@@ -478,24 +607,74 @@ export const products = new Elysia()
     if (!ctx.user)
       throw new AuthenticationError()
 
-    const relatedOffers = await database
-      .select({ count: count() })
-      .from(bundleOfOffer)
-      .where(eq(bundleOfOffer.bundleId, ctx.params.id))
-
-    if (relatedOffers[0].count > 0)
-      return error(403 ,"Cannot delete bundle with related offers")
-
-    const result = await database
-      .delete(bundle)
-      .where(and(eq(bundle.productId, ctx.params.productId), eq(bundle.id, ctx.params.id)))
-      .returning()
+    const relatedProducts = await database
+      .select()
+      .from(product)
+      .where(eq(product.id, ctx.params.productId))
       .catch(() => {})
 
-    if (!result)
+    if (!relatedProducts)
       throw new InternalServerError()
 
-    return result[0]
+    if (!relatedProducts[0])
+      throw new NotFoundError()
+
+    const variants = await database
+      .select()
+      .from(product)
+      .where(eq(product.variantOf, ctx.params.productId))
+      .catch(() => {})
+
+    if (!variants)
+      throw new InternalServerError()
+
+    const bundles = await database
+      .select()
+      .from(bundle)
+      .where(eq(bundle.id, ctx.params.id))
+
+    if (!bundles)
+      throw new InternalServerError()
+
+    if (!bundles[0])
+      throw new NotFoundError()
+
+    const transactionResult = await database.transaction(async (transaction) => {
+      let deletedBundles: Bundle[] = []
+      for (const product of [ ...relatedProducts, ...variants ]) {
+
+        const relatedOffers = await transaction
+          .select({ count: count() })
+          .from(bundleOfOffer)
+          .innerJoin(bundle, eq(bundleOfOffer.bundleId, bundle.id))
+          .where(and(eq(bundle.name, bundles[0].name), eq(bundle.productId, product.id)))
+    
+        if (relatedOffers[0].count > 0) {
+          transaction.rollback()
+          return
+        }
+
+        const result = await transaction
+          .delete(bundle)
+          .where(and(eq(bundle.productId, product.id), eq(bundle.name, bundles[0].name)))
+          .returning()
+          .catch(() => {})
+
+        if (!result) {
+          transaction.rollback()
+          return
+        }
+
+        deletedBundles.push(result[0])
+      }
+
+      return deletedBundles[0]
+    }).catch(() => {})
+
+    if (!transactionResult)
+      return error(403, "Cannot delete bundle with related offers")
+
+    return transactionResult
   })
   .get("/api/offers", async (ctx) => {
     if (!ctx.user)

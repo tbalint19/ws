@@ -3,13 +3,13 @@
   import { getContext,  } from "svelte"
   import type { AppClient } from "../../../api/appClient";
   import type { NotificationCTX } from "$lib/components/RequestNotifications/context";
-	import { writable } from "svelte/store";
   import { goto, invalidateAll } from "$app/navigation"
   import Button from "../../../components/elements/Button.svelte";
   import { afterNavigate } from "$app/navigation";
   import BundleEditor from "../../../components/BundleEditor.svelte";
+  import ProductEditor from "../../../components/ProductEditor.svelte";
 
-  type Product = NonNullable<Awaited<ReturnType<typeof client.api.products.post>>['data']>
+  type Product = NonNullable<Awaited<ReturnType<ReturnType<typeof client.api.products>['get']>>['data']>
   type Category = NonNullable<Awaited<ReturnType<typeof client.api.categories.get>>['data']>[0]
   type Bundle = NonNullable<Awaited<ReturnType<ReturnType<typeof client.api.bundles>['get']>>['data']>[0]
 
@@ -18,8 +18,11 @@
   
   $: id = $page.params.id
   $: category = $page.url.searchParams.get('category')
+  $: variantOfParam = $page.url.searchParams.get('variantof')
   let parentCategory: Category | undefined
   afterNavigate(async () => {
+    variants = []
+    categories = []
     if (category) {
       const response = await client.api.categories({ id: category }).get().catch(() => {})
       if (!response || !response.data)
@@ -33,25 +36,43 @@
         load()
         loadRelatedCategories()
         loadRelatedBundles()
+        loadVariants()
       }
     }
+    reset()
   })
 
+  const addVariant = () => {
+    if (!id) return
+    goto("/products/new?variantof=" + id)
+  }
+
+  const reset = () => {
+    name = ""
+    brand = ""
+    model = ""
+    description = ""
+    displayUnit = ""
+  }
+
+  let variantOf: string | null = null
   let name = ""
   let brand = ""
   let model = ""
   let description = ""
   let displayUnit = ""
 
+  $: canSaveProduct = name.length > 0
   let saving = false
   const saveProduct = async () => {
+    if (!canSaveProduct) return
     saving = true
     const response = id !== "new" ?
       await client.api.products({ id }).patch({
         name, brand, model, description, displayUnit
       }).catch(() => {}) :
       await client.api.products.post({ product: {
-        name, brand, model, description, displayUnit
+        name, brand, model, description, displayUnit, variantOf: variantOfParam || undefined
       }, categoryId: category || undefined }).catch(() => {})
     saving = false
     if (!response || !response.data)
@@ -76,6 +97,7 @@
     model = response.data.model || ""
     description = response.data.description || ""
     displayUnit = response.data.displayUnit || ""
+    variantOf = response.data.variantOf
   }
 
   let categories: Category[] = []
@@ -114,6 +136,18 @@
     bundles = response.data
   }
 
+  let variants: Product[] = []
+  let isLoadingVariants = false
+  const loadVariants = async () => {
+    isLoadingVariants = true
+    const response = await client.api.variants({ productId: id }).get().catch(() => {})
+    isLoadingVariants = false
+    if (!response || !response.data)
+      return warn()
+
+    variants = response.data
+  }
+
   const deleteBundle = (bundle: Bundle) => bundles = bundles.filter(b => b.id !== bundle.id)
   const addBundle = (bundle: Bundle) => bundles = [ ...bundles, bundle ]
   const updateBundle = (bundle: Bundle) => bundles = bundles.map(b => b.id === bundle.id ? bundle : b)
@@ -122,12 +156,20 @@
     navigator.clipboard.writeText(id)
     notify({ type: "info", text: "Copied to clipboard" })
   }
+
+  const backToParent = () => {
+    if (!variantOf) return
+    goto("/products/" + variantOf)
+  }
 </script>
 
 <main class="p-8">
   <div class="flex gap-6">
     <div class="w-[450px]">
       <section class="card card-body bg-base-300 text-base-content mb-6">
+        <button class="btn btn-secondary" disabled={!variantOfParam && !variantOf} on:click={backToParent}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><g fill="none" fill-rule="evenodd"><path d="M24 0v24H0V0zM12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093c.012.004.023 0 .029-.008l.004-.014l-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014l-.034.614c0 .012.007.02.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M8.108 3a3 3 0 0 0-2.544 1.41l-4.08 6.53a2 2 0 0 0 0 2.12l4.08 6.53A3 3 0 0 0 8.108 21H19a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3zm8.427 12.536a1 1 0 0 1-1.414 0L13 13.414l-2.121 2.122a1 1 0 1 1-1.415-1.415L11.586 12L9.464 9.879a1 1 0 0 1 1.415-1.415L13 10.586l2.121-2.122a1 1 0 1 1 1.414 1.415L14.415 12l2.12 2.121a1 1 0 0 1 0 1.415"/></g></svg>
+        </button>
         <div class="flex gap-1">
           <input class="input input-bordered grow" type="text" placeholder="ID" disabled value={id === "new" ? "" : id}>
           <button class="btn btn-outline" disabled={id === "new"} on:click={copyId}>
@@ -139,7 +181,16 @@
         <input class="input input-bordered" type="text" placeholder="Model" bind:value={model}>
         <input class="input input-bordered" type="text" placeholder="Description" bind:value={description}>
         <input class="input input-bordered" type="text" placeholder="Display Unit" bind:value={displayUnit}>
-        <Button on:click={saveProduct} disabled={saving} loading={loading} type="save" />
+        <Button on:click={saveProduct} disabled={saving || !canSaveProduct} loading={loading} type="save" />
+        <div class="divider">Variants</div>
+        {#each variants as variant (variant.id)}
+          <button class="btn btn-info btn-outline" on:click={() => goto("/products/" + variant.id)}>
+            { variant.name }
+          </button>
+        {/each}
+        <button disabled={id === "new"} on:click={addVariant} class="btn btn-info">
+          <svg xmlns="http://www.w3.org/2000/svg" width="1.8em" height="1.8em" viewBox="0 0 24 24"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1-1.4 1.4a4.8 4.8 0 0 1 0-7l3.5-3.6a5.1 5.1 0 0 1 7.1 0a5.1 5.1 0 0 1 0 7.1l-1.5 1.5a6.4 6.4 0 0 0-.4-2.4l.5-.5a3.2 3.2 0 0 0 0-4.3a3.2 3.2 0 0 0-4.3 0l-3.5 3.6a2.9 2.9 0 0 0 0 4.2M23 18v2h-3v3h-2v-3h-3v-2h3v-3h2v3m-3.8-4.3a4.8 4.8 0 0 0-1.4-4.5a1 1 0 0 0-1.4 1.4a2.9 2.9 0 0 1 0 4.2l-3.5 3.6a3.2 3.2 0 0 1-4.3 0a3.2 3.2 0 0 1 0-4.3l.5-.4a7.3 7.3 0 0 1-.4-2.5l-1.5 1.5a5.1 5.1 0 0 0 0 7.1a5.1 5.1 0 0 0 7.1 0l1.8-1.8a6 6 0 0 1 3.1-4.3"/></svg>
+        </button>
       </section>
 
       {#if parentCategory}
@@ -183,6 +234,11 @@
               productId={id}
               on:save={({ detail }) => addBundle(detail)} />      
           </div>
+        {/if}
+        {#if id}
+          {#key id}
+            <ProductEditor {id} />
+          {/key}
         {/if}
       {/if}
     </div>

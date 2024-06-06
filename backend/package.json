@@ -2,15 +2,16 @@
   "name": "backend",
   "version": "1.0.50",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
     "gen": "bunx drizzle-kit generate:pg",
-    "sql": "bun src/database/migrate.ts"
+    "sql": "bun src/database/migrate.ts",
+    "it": "bun --env-file=.env.test src/database/migrate.ts && bun test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.572.0",
     "@aws-sdk/s3-request-presigner": "^3.572.0",
     "@elysiajs/cors": "^1.0.2",
+    "@elysiajs/eden": "^1.0.14",
     "@neondatabase/serverless": "^0.9.0",
     "@sinclair/typebox": "^0.32.19",
     "@types/ws": "^8.5.10",
