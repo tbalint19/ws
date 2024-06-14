@@ -9,7 +9,20 @@ services:
       - type: volume
         target: /database
     environment:
+      POSTGRES_DB: webshop
+      POSTGRES_USER: webshopclient
       POSTGRES_PASSWORD: secret
+    ports:
+      - 5432:5432
+
+  testdb:
+      image: postgres
+      environment:
+        POSTGRES_DB: webshoptest
+        POSTGRES_USER: webshoptestclient
+        POSTGRES_PASSWORD: secret
+      ports:
+        - 5433:5432
 
   adminer:
     image: adminer
