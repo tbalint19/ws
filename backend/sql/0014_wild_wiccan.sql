@@ -1,0 +1,1 @@
+ALTER TABLE "bundle" ALTER COLUMN "name" SET NOT NULL;
