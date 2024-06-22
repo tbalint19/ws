@@ -17,6 +17,7 @@ services:
 
   testdb:
       image: postgres
+      restart: always
       environment:
         POSTGRES_DB: webshoptest
         POSTGRES_USER: webshoptestclient
