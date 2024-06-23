@@ -16,17 +16,20 @@ services:
       - 5432:5432
 
   testdb:
-      image: postgres
-      restart: always
-      environment:
-        POSTGRES_DB: webshoptest
-        POSTGRES_USER: webshoptestclient
-        POSTGRES_PASSWORD: secret
-      ports:
-        - 5433:5432
-
-  adminer:
-    image: adminer
+    image: postgres
     restart: always
+    environment:
+      POSTGRES_DB: webshoptest
+      POSTGRES_USER: webshoptestclient
+      POSTGRES_PASSWORD: secret
     ports:
-      - 8080:8080
+      - 5433:5432
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: webshop@email.com
+      PGADMIN_DEFAULT_PASSWORD: emailsecret
+    ports:
+      - 8080:80

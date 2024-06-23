@@ -14,13 +14,16 @@ type Session = Static<typeof SessionSchema>
 
 export const login = async (payload: IdTokenPayload): Promise<Session | null> => {
   
-  const result = await database.select().from(admin).where(eq(admin.googleId, payload.sub))
+  const result = await database.select().from(admin).where(eq(admin.googleId, payload.sub)).catch(() => {})
   
-  if (!result.length) {
-    await database
+  if (!result || !result.length) {
+    const insertResult = await database
       .insert(admin)
       .values({ googleId: payload.sub, username: payload.name || "" })
       .returning()
+      .catch(() => {})
+    if (!insertResult || !insertResult[0])
+      return null
   }
 
   return {
