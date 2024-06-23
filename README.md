@@ -1,5 +1,7 @@
 # Setup
 
+This document will provide help to set up a local environment with the **database**, the **backend** and the **frontend**.
+
 ## Database (Local)
 
 ```bash
