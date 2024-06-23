@@ -2,10 +2,11 @@
 
 This document will provide help to set up a local environment with the **database**, the **backend** and the **frontend**.
 
-## Database (Local)
+## Database
 
 ```bash
-# Start DB, test DB and PgAdmin
+# Start a local DB, test DB and PgAdmin
+# ./database
 docker-compose up
 
 # ../backend - create tables
@@ -49,10 +50,14 @@ docker-compose down
 ## Backend
 
 .env.template
-  -> .env
-  -> .env.test
+  - -> .env
+  - -> .env.test
+
+
 
 ```bash
+# ./backend
+bun i
 bun dev
 
 # DB - run after each update in backend/src/database/schema.ts
@@ -63,10 +68,12 @@ bun run sql   # -> execute sql (update tables)
 ## App
 
 .env.template
-  -> .env.development
-  -> .env.production
+  - -> .env.development
+  - -> .env.production
 
 ```bash
+# ./app
+bun i
 bun --bun run dev
 # or
 bun --bun run build
@@ -77,7 +84,7 @@ bun --bun run build
 - [Sveltekit](https://kit.svelte.dev/docs/routing)
 - [Elysia](https://elysiajs.com/quick-start.html)
 - [DrizzleORM](https://orm.drizzle.team/docs/overview)
-- [Neon DB](https://console.neon.tech)
+- [DaisyUI](https://daisyui.com)
 
 ## Deploy
 
